@@ -36,7 +36,14 @@ end
 desc "Build a debug version of the app, useful for local development"
 task :debug do
   Dir.chdir(Rake.original_dir)
-  Rally::AppSdk::AppTemplateBuilder.new(get_config_from_file).build_app_html(true)
+
+  # A temporary stopgap to prevent generation of a debug file (it doesn't work correctly right now).
+  config = get_config_from_file
+  if (config.sdk_version.include? "1.")
+    puts "Currently, there is no support for debugging an SDK 1 app."
+  else
+    Rally::AppSdk::AppTemplateBuilder.new(get_config_from_file).build_app_html(true)
+  end
 end
 
 desc "Clean all generated output"
@@ -527,8 +534,15 @@ module Rally
         create_file_from_template CONFIG_FILE, Rally::AppTemplates::CONFIG_TPL
         create_file_from_template DEPLOY_FILE, Rally::AppTemplates::DEPLOY_TPL
         create_file_from_template GITIGNORE_FILE, Rally::AppTemplates::GITIGNORE_TPL
-        create_file_from_template JAVASCRIPT_FILE, Rally::AppTemplates::JAVASCRIPT_TPL, {:escape => true}
-        create_file_from_template CSS_FILE, Rally::AppTemplates::CSS_TPL
+
+        # The Javascript and CSS structure are different between SDK 1 and SDK 2
+        if @config.sdk_version.include? "2.0"
+          create_file_from_template JAVASCRIPT_FILE, Rally::AppTemplates::JAVASCRIPT_TPL, {:escape => true}
+          create_file_from_template CSS_FILE, Rally::AppTemplates::CSS_TPL
+        else
+          create_file_from_template JAVASCRIPT_FILE, Rally::AppTemplates::JAVASCRIPT_TPL_SDK1, {:escape => true}
+          create_file_from_template CSS_FILE, Rally::AppTemplates::CSS_TPL_SDK1
+        end
       end
 
       def build_app_html(debug = false, file = nil)
@@ -539,7 +553,14 @@ module Rally
         if file.nil?
           file = debug ? HTML_DEBUG : HTML
         end
-        template = debug ? Rally::AppTemplates::HTML_DEBUG_TPL : Rally::AppTemplates::HTML_TPL
+
+        # HTML templates are different betweeen SDK 1 and SDK 2 apps
+        if @config.sdk_version.include? "2.0"
+          template = debug ? Rally::AppTemplates::HTML_DEBUG_TPL : Rally::AppTemplates::HTML_TPL
+        else
+          template = debug ? Rally::AppTemplates::HTML_DEBUG_TPL_SDK1 : Rally::AppTemplates::HTML_TPL_SDK1
+        end
+
         template = populate_template_with_resources(template,
                                                     "JAVASCRIPT_BLOCK",
                                                     @config.javascript,
@@ -717,20 +738,21 @@ module Rally
           raise Exception.new("Could not find CSS file #{file}") unless File.exist? file
         end
 
-        class_name_valid = false
-        @javascript.each do |file|
-          file_contents = File.open(file, "rb").read
-          if file_contents =~ /Ext.define\(\s*['"]#{class_name}['"]\s*,/
-            class_name_valid = true
-            break
+        if @sdk_version.include? "2.0"
+          class_name_valid = false
+          @javascript.each do |file|
+            file_contents = File.open(file, "rb").read
+            if file_contents =~ /Ext.define\(\s*['"]#{class_name}['"]\s*,/
+              class_name_valid = true
+              break
+            end
+          end
+          unless class_name_valid
+            msg = "The 'className' property '#{class_name}' in #{Rally::AppSdk::AppTemplateBuilder::CONFIG_FILE} was not used when defining your app.\n" +
+                "Please make sure that the 'className' property in #{Rally::AppSdk::AppTemplateBuilder::CONFIG_FILE} and the class name you use to define your app match!"
+            raise Exception.new(msg)
           end
         end
-        unless class_name_valid
-          msg = "The 'className' property '#{class_name}' in #{Rally::AppSdk::AppTemplateBuilder::CONFIG_FILE} was not used when defining your app.\n" +
-              "Please make sure that the 'className' property in #{Rally::AppSdk::AppTemplateBuilder::CONFIG_FILE} and the class name you use to define your app match!"
-          raise Exception.new(msg)
-        end
-
       end
 
       def sdk_debug_path
@@ -844,11 +866,30 @@ Ext.define('CLASS_NAME', {
 });
     END
 
+    JAVASCRIPT_TPL_SDK1 = <<-END
+function APP_TITLE() {
+  var that = this;
+  this.display = function(element) {
+    // App code goes here...
+  }; 
+}
+    END
+
     JAVASCRIPT_INLINE_BLOCK_TPL = <<-END
 JAVASCRIPT_BLOCK
             Rally.launchApp('CLASS_NAME', {
                 name: 'APP_NAME'
             });
+    END
+
+    JAVASCRIPT_INLINE_BLOCK_TPL_SDK1 = <<-END
+JAVASCRIPT_BLOCK
+      function onLoad() {
+          var appCustom = new APP_NAME();
+          appCustom.display(dojo.body());
+      }
+
+      rally.addOnLoad(onLoad);
     END
 
     HTML_DEBUG_TPL = <<-END
@@ -877,6 +918,31 @@ STYLE_BLOCK
 </html>
     END
 
+    HTML_DEBUG_TPL_SDK1 = <<-END
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<!-- Copyright (c) 2012 Rally Software Development Corp. All rights reserved -->
+<html>
+<head>
+  <title>APP_TITLE</title>
+
+  <script type="text/javascript" src="APP_SDK_PATH"></script>
+  <script type="text/javascript" src=DEFAULT_APP_JS_FILE</script>
+  <link rel="stylesheet" type="text/css" href=DEFAULT_APP_CSS_FILE />
+
+  <script type="text/javascript">
+    function onLoad() {
+      var appCustom = new APP_NAME();
+      appCustom.display(dojo.body());
+    }
+
+    rally.addOnLoad(onLoad);
+  </script>
+
+</head>
+<body></body>
+</html>
+    END
+
     HTML_TPL = <<-END
 <!DOCTYPE html>
 <html>
@@ -892,6 +958,26 @@ STYLE_BLOCK
 
     <style type="text/css">
 STYLE_BLOCK    </style>
+</head>
+<body></body>
+</html>
+    END
+
+    HTML_TPL_SDK1 = <<-END
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<!-- Copyright (c) 2012 Rally Software Development Corp. All rights reserved -->
+<html>
+<head>
+    <title>APP_TITLE</title>
+    <script type="text/javascript" src="APP_SDK_PATH"></script>
+
+    <script type="text/javascript">
+#{JAVASCRIPT_INLINE_BLOCK_TPL_SDK1}
+    </script>
+
+    <style type="text/css">
+STYLE_BLOCK
+    </style>
 </head>
 <body></body>
 </html>
@@ -924,6 +1010,10 @@ STYLE_BLOCK    </style>
 .app {
      /* Add app styles here */
 }
+    END
+
+    CSS_TPL_SDK1 = <<-END
+/* Add app styles here */
     END
 
     GITIGNORE_TPL = <<-END
