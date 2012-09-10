@@ -38,12 +38,12 @@ task :debug do
   Dir.chdir(Rake.original_dir)
 
   # A temporary stopgap to prevent generation of a debug file (it doesn't work correctly right now).
-  config = get_config_from_file
-  if (config.sdk_version.include? "1.")
-    puts "Currently, there is no support for debugging an SDK 1 app."
-  else
+  # config = get_config_from_file
+  # if (config.sdk_version.include? "1.")
+    # puts "Currently, there is no support for debugging an SDK 1 app."
+  # else
     Rally::AppSdk::AppTemplateBuilder.new(get_config_from_file).build_app_html(true)
-  end
+  # end
 end
 
 desc "Clean all generated output"
@@ -300,7 +300,6 @@ module Rally
 
       # Create empty panel to place app source code
       def create_empty_panel
-
           # Lookup panel meta
           path = "/slm/panel/getCatalogPanels.sp"
           params = {:cpoid => @project_oid,
@@ -536,7 +535,7 @@ module Rally
         create_file_from_template GITIGNORE_FILE, Rally::AppTemplates::GITIGNORE_TPL
 
         # The Javascript and CSS structure are different between SDK 1 and SDK 2
-        if @config.sdk_version.include? "2.0"
+        if @config.sdk_version.include? "2."
           create_file_from_template JAVASCRIPT_FILE, Rally::AppTemplates::JAVASCRIPT_TPL, {:escape => true}
           create_file_from_template CSS_FILE, Rally::AppTemplates::CSS_TPL
         else
@@ -555,7 +554,7 @@ module Rally
         end
 
         # HTML templates are different betweeen SDK 1 and SDK 2 apps
-        if @config.sdk_version.include? "2.0"
+        if @config.sdk_version.include? "2."
           template = debug ? Rally::AppTemplates::HTML_DEBUG_TPL : Rally::AppTemplates::HTML_TPL
         else
           template = debug ? Rally::AppTemplates::HTML_DEBUG_TPL_SDK1 : Rally::AppTemplates::HTML_TPL_SDK1
@@ -586,7 +585,7 @@ module Rally
       private
 
       def assure_deploy_directory_exists
-        mkdir DEPLOY_DIR unless  File.exists?(DEPLOY_DIR)
+        mkdir DEPLOY_DIR unless File.exists?(DEPLOY_DIR)
       end
 
       def get_template_files
@@ -738,7 +737,7 @@ module Rally
           raise Exception.new("Could not find CSS file #{file}") unless File.exist? file
         end
 
-        if @sdk_version.include? "2.0"
+        if @sdk_version.include? "2."
           class_name_valid = false
           @javascript.each do |file|
             file_contents = File.open(file, "rb").read
@@ -756,7 +755,11 @@ module Rally
       end
 
       def sdk_debug_path
-        "#{SDK_ABSOLUTE_URL}/#{@sdk_version}/#{SDK_DEBUG_FILE}"
+        if @sdk_version.include? "2."
+          "#{SDK_ABSOLUTE_URL}/#{@sdk_version}/#{SDK_DEBUG_FILE}"
+        else
+          "#{SDK_ABSOLUTE_URL}/#{@sdk_version}/#{SDK_FILE}?debug=true"
+        end
       end
 
       def sdk_path
@@ -920,10 +923,13 @@ STYLE_BLOCK
 
     HTML_DEBUG_TPL_SDK1 = <<-END
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
-<!-- Copyright (c) 2012 Rally Software Development Corp. All rights reserved -->
+<!-- Copyright (c) #{Time.new.strftime("%Y")} Rally Software Development Corp. All rights reserved -->
 <html>
 <head>
   <title>APP_TITLE</title>
+  <meta name="Name" content="App: APP_READABLE_NAME" />
+  <meta name="Version" content="#{Time.new.strftime("%Y.%m.%d")}" />
+  <meta name="Vendor" content="Rally Software" />
 
   <script type="text/javascript" src="APP_SDK_PATH"></script>
   <script type="text/javascript" src=DEFAULT_APP_JS_FILE</script>
@@ -965,11 +971,14 @@ STYLE_BLOCK    </style>
 
     HTML_TPL_SDK1 = <<-END
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
-<!-- Copyright (c) 2012 Rally Software Development Corp. All rights reserved -->
+<!-- Copyright (c) #{Time.new.strftime("%Y")} Rally Software Development Corp. All rights reserved -->
 <html>
 <head>
     <title>APP_TITLE</title>
     <script type="text/javascript" src="APP_SDK_PATH"></script>
+    <meta name="Name" content="App: APP_READABLE_NAME" />
+    <meta name="Version" content="#{Time.new.strftime("%Y.%m.%d")}" />
+    <meta name="Vendor" content="Rally Software" />
 
     <script type="text/javascript">
 #{JAVASCRIPT_INLINE_BLOCK_TPL_SDK1}
