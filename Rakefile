@@ -36,14 +36,7 @@ end
 desc "Build a debug version of the app, useful for local development"
 task :debug do
   Dir.chdir(Rake.original_dir)
-
-  # A temporary stopgap to prevent generation of a debug file (it doesn't work correctly right now).
-  # config = get_config_from_file
-  # if (config.sdk_version.include? "1.")
-    # puts "Currently, there is no support for debugging an SDK 1 app."
-  # else
-    Rally::AppSdk::AppTemplateBuilder.new(get_config_from_file).build_app_html(true)
-  # end
+  Rally::AppSdk::AppTemplateBuilder.new(get_config_from_file).build_app_html(true)
 end
 
 desc "Clean all generated output"
@@ -554,10 +547,10 @@ module Rally
         end
 
         # HTML templates are different betweeen SDK 1 and SDK 2 apps
-        if @config.sdk_version.include? "2."
-          template = debug ? Rally::AppTemplates::HTML_DEBUG_TPL : Rally::AppTemplates::HTML_TPL
-        else
+        if @config.sdk_version.include? "1."
           template = debug ? Rally::AppTemplates::HTML_DEBUG_TPL_SDK1 : Rally::AppTemplates::HTML_TPL_SDK1
+        else
+          template = debug ? Rally::AppTemplates::HTML_DEBUG_TPL : Rally::AppTemplates::HTML_TPL
         end
 
         template = populate_template_with_resources(template,
@@ -573,6 +566,15 @@ module Rally
                                                     debug,
                                                     "<link rel=\"stylesheet\" type=\"text/css\" href=\"VALUE\">",
                                                     2)
+
+        if @config.sdk_version.include? "1."
+          template = populate_template_with_resources(template,
+                                                      "JAVASCRIPT_DEBUG_BLOCK",
+                                                      @config.javascript,
+                                                      debug,
+                                                      "<script type=\"text/javascript\" src=\"VALUE\"></script>",
+                                                      2)
+        end
 
         create_file_from_template file, template, {:debug => debug, :escape => true}
       end
@@ -611,7 +613,9 @@ module Rally
         resources.each do |file|
           if debug
             block << separator << debug_tpl.gsub("VALUE"){file}
-            if is_javascript_file(file)
+
+            # Commas in a SDK1 HTML file results in incorrect HTML formatting
+            if is_javascript_file(file) and @config.sdk_version.include? "2."
               separator = ",\n" + indent * 4
             else
               separator = "\n"
@@ -652,7 +656,6 @@ module Rally
         file.split('.').last.eql? "js"
       end
     end
-
 
     ## Simple object wrapping the configuration of an App
     class AppConfig
@@ -886,13 +889,18 @@ JAVASCRIPT_BLOCK
     END
 
     JAVASCRIPT_INLINE_BLOCK_TPL_SDK1 = <<-END
+   <script type="text/javascript">
 JAVASCRIPT_BLOCK
+    </script>
+
+    <script type="text/javascript">
       function onLoad() {
           var appCustom = new APP_NAME();
           appCustom.display(dojo.body());
       }
 
       rally.addOnLoad(onLoad);
+    </script>
     END
 
     HTML_DEBUG_TPL = <<-END
@@ -932,8 +940,8 @@ STYLE_BLOCK
   <meta name="Vendor" content="Rally Software" />
 
   <script type="text/javascript" src="APP_SDK_PATH"></script>
-  <script type="text/javascript" src=DEFAULT_APP_JS_FILE</script>
-  <link rel="stylesheet" type="text/css" href=DEFAULT_APP_CSS_FILE />
+    JAVASCRIPT_DEBUG_BLOCK
+    STYLE_BLOCK
 
   <script type="text/javascript">
     function onLoad() {
@@ -980,9 +988,7 @@ STYLE_BLOCK    </style>
     <meta name="Version" content="#{Time.new.strftime("%Y.%m.%d")}" />
     <meta name="Vendor" content="Rally Software" />
 
-    <script type="text/javascript">
 #{JAVASCRIPT_INLINE_BLOCK_TPL_SDK1}
-    </script>
 
     <style type="text/css">
 STYLE_BLOCK
