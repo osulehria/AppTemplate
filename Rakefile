@@ -496,6 +496,7 @@ module Rally
     ## Builds the RallyJson config file as well as the JavaScript, CSS, and HTML
     ## template files.
     class AppTemplateBuilder
+      include Rake::DSL
 
       CONFIG_FILE = "config.json"
       DEPLOY_FILE = "deploy.json"
