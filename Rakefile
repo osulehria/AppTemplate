@@ -665,7 +665,7 @@ module Rally
       SDK_FILE = "sdk.js"
       SDK_DEBUG_FILE = "sdk-debug.js"
 
-      attr_reader :name, :sdk_version
+      attr_reader :name, :sdk_version, :sdk_file, :sdk_debug_file
       attr_accessor :javascript, :css, :class_name
       attr_accessor :server, :username, :password, :project, :project_oid, :page_oid, :panel_oid
 
@@ -705,6 +705,8 @@ module Rally
       def initialize(name, sdk_version, config_file = nil, deploy_file = nil)
         @name = sanitize_string name
         @sdk_version = sdk_version
+        @sdk_file = "sdk.js"
+        @sdk_debug_file = (@sdk_version.include? "1.") ? "sdk.js?debug=true" : "sdk-debug.js" 
         @config_file = config_file
         @deploy_file = deploy_file
         @javascript = []
@@ -759,15 +761,11 @@ module Rally
       end
 
       def sdk_debug_path
-        if @sdk_version.include? "2."
-          "#{SDK_ABSOLUTE_URL}/#{@sdk_version}/#{SDK_DEBUG_FILE}"
-        else
-          "#{SDK_ABSOLUTE_URL}/#{@sdk_version}/#{SDK_FILE}?debug=true"
-        end
+        "#{SDK_ABSOLUTE_URL}/#{@sdk_version}/#{@sdk_debug_file}"
       end
 
       def sdk_path
-        "#{SDK_RELATIVE_URL}/#{@sdk_version}/#{SDK_FILE}"
+        "#{SDK_RELATIVE_URL}/#{@sdk_version}/#{@sdk_file}"
       end
     end
   end
