@@ -533,8 +533,8 @@ module Rally
           create_file_from_template JAVASCRIPT_FILE, Rally::AppTemplates::JAVASCRIPT_TPL, {:escape => true}
           create_file_from_template CSS_FILE, Rally::AppTemplates::CSS_TPL
         else
-          create_file_from_template JAVASCRIPT_FILE, Rally::AppTemplates::JAVASCRIPT_TPL_SDK1, {:escape => true}
-          create_file_from_template CSS_FILE, Rally::AppTemplates::CSS_TPL_SDK1
+          create_file_from_template JAVASCRIPT_FILE, Rally::AppTemplates::JAVASCRIPT_SDK1_TPL, {:escape => true}
+          create_file_from_template CSS_FILE, Rally::AppTemplates::CSS_SDK1_TPL
         end
       end
 
@@ -549,7 +549,7 @@ module Rally
 
         # HTML templates are different betweeen SDK 1 and SDK 2 apps
         if @config.sdk_version.include? "1."
-          template = debug ? Rally::AppTemplates::HTML_DEBUG_TPL_SDK1 : Rally::AppTemplates::HTML_TPL_SDK1
+          template = debug ? Rally::AppTemplates::HTML_DEBUG_SDK1_TPL : Rally::AppTemplates::HTML_SDK1_TPL
         else
           template = debug ? Rally::AppTemplates::HTML_DEBUG_TPL : Rally::AppTemplates::HTML_TPL
         end
@@ -869,7 +869,7 @@ Ext.define('CLASS_NAME', {
 });
     END
 
-    JAVASCRIPT_TPL_SDK1 = <<-END
+    JAVASCRIPT_SDK1_TPL = <<-END
 function APP_TITLE() {
   var that = this;
   this.display = function(element) {
@@ -885,7 +885,7 @@ JAVASCRIPT_BLOCK
             });
     END
 
-    JAVASCRIPT_INLINE_BLOCK_TPL_SDK1 = <<-END
+    JAVASCRIPT_INLINE_BLOCK_SDK1_TPL = <<-END
    <script type="text/javascript">
 JAVASCRIPT_BLOCK
     </script>
@@ -926,7 +926,7 @@ STYLE_BLOCK
 </html>
     END
 
-    HTML_DEBUG_TPL_SDK1 = <<-END
+    HTML_DEBUG_SDK1_TPL = <<-END
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <!-- Copyright (c) #{Time.new.strftime("%Y")} Rally Software Development Corp. All rights reserved -->
 <html>
@@ -974,7 +974,7 @@ STYLE_BLOCK    </style>
 </html>
     END
 
-    HTML_TPL_SDK1 = <<-END
+    HTML_SDK1_TPL = <<-END
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <!-- Copyright (c) #{Time.new.strftime("%Y")} Rally Software Development Corp. All rights reserved -->
 <html>
@@ -985,7 +985,7 @@ STYLE_BLOCK    </style>
     <meta name="Version" content="#{Time.new.strftime("%Y.%m.%d")}" />
     <meta name="Vendor" content="Rally Software" />
 
-#{JAVASCRIPT_INLINE_BLOCK_TPL_SDK1}
+#{JAVASCRIPT_INLINE_BLOCK_SDK1_TPL}
 
     <style type="text/css">
 STYLE_BLOCK
@@ -1024,7 +1024,7 @@ STYLE_BLOCK
 }
     END
 
-    CSS_TPL_SDK1 = <<-END
+    CSS_SDK1_TPL = <<-END
 /* Add app styles here */
     END
 
