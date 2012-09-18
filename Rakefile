@@ -529,12 +529,12 @@ module Rally
         create_file_from_template GITIGNORE_FILE, Rally::AppTemplates::GITIGNORE_TPL
 
         # The Javascript and CSS structure are different between SDK 1 and SDK 2
-        if @config.sdk_version.include? "2."
-          create_file_from_template JAVASCRIPT_FILE, Rally::AppTemplates::JAVASCRIPT_TPL, {:escape => true}
-          create_file_from_template CSS_FILE, Rally::AppTemplates::CSS_TPL
-        else
+        if @config.sdk_version.include? "1."
           create_file_from_template JAVASCRIPT_FILE, Rally::AppTemplates::JAVASCRIPT_SDK1_TPL, {:escape => true}
           create_file_from_template CSS_FILE, Rally::AppTemplates::CSS_SDK1_TPL
+        else
+          create_file_from_template JAVASCRIPT_FILE, Rally::AppTemplates::JAVASCRIPT_TPL, {:escape => true}
+          create_file_from_template CSS_FILE, Rally::AppTemplates::CSS_TPL
         end
       end
 
@@ -568,14 +568,12 @@ module Rally
                                                     "<link rel=\"stylesheet\" type=\"text/css\" href=\"VALUE\">",
                                                     2)
 
-        if @config.sdk_version.include? "1."
-          template = populate_template_with_resources(template,
-                                                      "JAVASCRIPT_DEBUG_BLOCK",
-                                                      @config.javascript,
-                                                      debug,
-                                                      "<script type=\"text/javascript\" src=\"VALUE\"></script>",
-                                                      2)
-        end
+        template = populate_template_with_resources(template,
+                                                    "JAVASCRIPT_DEBUG_BLOCK",
+                                                    @config.javascript,
+                                                    debug,
+                                                    "<script type=\"text/javascript\" src=\"VALUE\"></script>",
+                                                    2)
 
         create_file_from_template file, template, {:debug => debug, :escape => true}
       end
@@ -616,7 +614,7 @@ module Rally
             block << separator << debug_tpl.gsub("VALUE"){file}
 
             # Commas in a SDK1 HTML file results in incorrect HTML formatting
-            if is_javascript_file(file) and @config.sdk_version.include? "2."
+            if is_javascript_file(file) and not @config.sdk_version.include? "1."
               separator = ",\n" + indent * 4
             else
               separator = "\n"
@@ -741,7 +739,7 @@ module Rally
           raise Exception.new("Could not find CSS file #{file}") unless File.exist? file
         end
 
-        if @sdk_version.include? "2."
+        unless @sdk_version.include? "1."
           class_name_valid = false
           @javascript.each do |file|
             file_contents = File.open(file, "rb").read
