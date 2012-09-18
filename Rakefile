@@ -662,8 +662,6 @@ module Rally
     class AppConfig
       SDK_RELATIVE_URL = "/apps"
       SDK_ABSOLUTE_URL = "https://rally1.rallydev.com/apps"
-      SDK_FILE = "sdk.js"
-      SDK_DEBUG_FILE = "sdk-debug.js"
 
       attr_reader :name, :sdk_version, :sdk_file, :sdk_debug_file
       attr_accessor :javascript, :css, :class_name
