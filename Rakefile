@@ -521,7 +521,6 @@ module Rally
       def build
         fail_if_file_exists get_template_files
 
-        @config.html = HTML_TEMPLATE_FILE
         @config.javascript = JAVASCRIPT_FILE
         @config.css = CSS_FILE
         @config.class_name = CLASS_NAME
@@ -553,12 +552,11 @@ module Rally
         # HTML templates are different betweeen SDK 1 and SDK 2 apps
         if @config.sdk_version.include? "1."
           template = debug ? Rally::AppTemplates::HTML_DEBUG_SDK1_TPL : Rally::AppTemplates::HTML_SDK1_TPL
+          html_tpl = add_placeholders_to_html_template_file(template, HTML_TEMPLATE_FILE, debug)
+          write_file(".html.template", html_tpl)
         else
           template = debug ? Rally::AppTemplates::HTML_DEBUG_TPL : Rally::AppTemplates::HTML_TPL
         end
-
-        html_tpl = add_placeholders_to_html_template_file(template, @config.html[0], debug)
-        write_file(".html.template", html_tpl)
 
         template = populate_html_template_with_resources(template,
                                                     "HTML_SDK1_BLOCK",
@@ -683,7 +681,6 @@ module Rally
             gsub("APP_TITLE", @config.name).
             gsub("APP_SDK_VERSION", @config.sdk_version).
             gsub("APP_SDK_PATH", debug ? @config.sdk_debug_path : @config.sdk_path).
-            gsub("DEFAULT_APP_HTML_FILE", list_to_quoted_string(@config.html)).
             gsub("DEFAULT_APP_JS_FILE", list_to_quoted_string(@config.javascript)).
             gsub("DEFAULT_APP_CSS_FILE", list_to_quoted_string(@config.css)).
             gsub("CLASS_NAME", @config.class_name)
@@ -708,7 +705,7 @@ module Rally
       SDK_ABSOLUTE_URL = "https://rally1.rallydev.com/apps"
 
       attr_reader :name, :sdk_version, :sdk_file, :sdk_debug_file
-      attr_accessor :html, :javascript, :css, :class_name
+      attr_accessor :javascript, :css, :class_name
       attr_accessor :server, :username, :password, :project, :project_oid, :page_oid, :panel_oid
 
       def self.from_config_file(config_file, deploy_file)
@@ -719,7 +716,6 @@ module Rally
         name = Rally::RallyJson.get(config_file, "name")
         sdk_version = Rally::RallyJson.get(config_file, "sdk")
         class_name = Rally::RallyJson.get(config_file, "className")
-        html = Rally::RallyJson.get_array(config_file, "html")
         javascript = Rally::RallyJson.get_array(config_file, "javascript")
         css = Rally::RallyJson.get_array(config_file, "css")
 
@@ -732,7 +728,6 @@ module Rally
         panel_oid = Rally::RallyJson.get(deploy_file, "panelOid.cached")
 
         config = Rally::AppSdk::AppConfig.new(name, sdk_version, config_file, deploy_file)
-        config.html = html
         config.javascript = javascript
         config.css = css
         config.class_name = class_name
@@ -753,13 +748,8 @@ module Rally
         @sdk_debug_file = (@sdk_version.include? "1.") ? "sdk.js?debug=true" : "sdk-debug.js" 
         @config_file = config_file
         @deploy_file = deploy_file
-        @html = []
         @javascript = []
         @css = []
-      end
-
-      def html=(file)
-        @html = (@html << file).flatten
       end
 
       def javascript=(file)
@@ -784,10 +774,6 @@ module Rally
       end
 
       def validate
-        @html.each do |file|
-          raise Exception.new("Could not find HTML template file #{file}") unless File.exist? file
-        end
-
         @javascript.each do |file|
           raise Exception.new("Could not find JavaScript file #{file}") unless File.exist? file
         end
@@ -1040,9 +1026,6 @@ STYLE_BLOCK    </style>
     "name": "APP_READABLE_NAME",
     "className": "CustomApp",
     "sdk": "APP_SDK_VERSION",
-    "html": [
-        DEFAULT_APP_HTML_FILE
-    ],
     "javascript": [
         DEFAULT_APP_JS_FILE
     ],
