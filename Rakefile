@@ -502,6 +502,7 @@ module Rally
       DEPLOY_FILE = "deploy.json"
       GITIGNORE_FILE = ".gitignore"
       DEPLOY_DIR = 'deploy'
+      HTML_TEMPLATE_FILE = "App.template.html"
       JAVASCRIPT_FILE = "App.js"
       CSS_FILE = "app.css"
       HTML = "#{DEPLOY_DIR}/App.html"
@@ -520,6 +521,7 @@ module Rally
       def build
         fail_if_file_exists get_template_files
 
+        @config.html = HTML_TEMPLATE_FILE
         @config.javascript = JAVASCRIPT_FILE
         @config.css = CSS_FILE
         @config.class_name = CLASS_NAME
@@ -532,6 +534,7 @@ module Rally
         if @config.sdk_version.include? "1."
           create_file_from_template JAVASCRIPT_FILE, Rally::AppTemplates::JAVASCRIPT_SDK1_TPL, {:escape => true}
           create_file_from_template CSS_FILE, Rally::AppTemplates::CSS_SDK1_TPL
+          create_file_from_template HTML_TEMPLATE_FILE, Rally::AppTemplates::HTML_FILE_TPL
         else
           create_file_from_template JAVASCRIPT_FILE, Rally::AppTemplates::JAVASCRIPT_TPL, {:escape => true}
           create_file_from_template CSS_FILE, Rally::AppTemplates::CSS_TPL
@@ -554,6 +557,16 @@ module Rally
           template = debug ? Rally::AppTemplates::HTML_DEBUG_TPL : Rally::AppTemplates::HTML_TPL
         end
 
+        html_tpl = add_placeholders_to_html_template_file(template, @config.html[0], debug)
+        write_file(".html.template", html_tpl)
+
+        template = populate_html_template_with_resources(template,
+                                                    "HTML_SDK1_BLOCK",
+                                                    ".html.template",
+                                                    debug,
+                                                    "\"VALUE\"",
+                                                    0)
+
         template = populate_template_with_resources(template,
                                                     "JAVASCRIPT_BLOCK",
                                                     @config.javascript,
@@ -566,7 +579,7 @@ module Rally
                                                     @config.css,
                                                     debug,
                                                     "<link rel=\"stylesheet\" type=\"text/css\" href=\"VALUE\">",
-                                                    2)
+                                                    1)
 
         template = populate_template_with_resources(template,
                                                     "JAVASCRIPT_DEBUG_BLOCK",
@@ -590,7 +603,7 @@ module Rally
       end
 
       def get_template_files
-        [CONFIG_FILE, DEPLOY_FILE, JAVASCRIPT_FILE, CSS_FILE, HTML_DEBUG, HTML_LOCAL]
+        [CONFIG_FILE, DEPLOY_FILE, HTML_TEMPLATE_FILE, JAVASCRIPT_FILE, CSS_FILE, HTML_DEBUG, HTML_LOCAL]
       end
 
       def create_file_from_template(file, template, opts = {})
@@ -601,6 +614,38 @@ module Rally
       def write_file(path, content)
         File.open(path, "w") { |file| file.write(content) }
         puts "> Created #{path}"
+      end
+
+      def add_placeholders_to_html_template_file(template, resource, debug)
+        tpl_file = ""
+
+        File.open(resource, "r") do |file|
+          file.each_line do |line|
+            tpl_file = tpl_file + line
+            if line.include? "sdk.js"
+              tpl_file += "  " + "JAVASCRIPT_DEBUG_BLOCK" + "\n" + "  " + "STYLE_BLOCK" + "\n" if debug
+              tpl_file += "  " + "<script type =\"text/javascript\">" + "\n" + "    " + "JAVASCRIPT_BLOCK" + "\n" + "  " + "</script>" + "\n\n" + "  " + "<style type=\"text/css\">" + "\n" + "    " + "STYLE_BLOCK" + "\n" + "  " + "</style>" + "\n" unless debug
+            end
+          end
+        end
+        tpl_file
+      end
+
+      def populate_html_template_with_resources(template, placeholder, file, debug, debug_tpl, indent_level)
+        block = ""
+        indent = "    " * indent_level
+
+        # resources.each do |file|
+          if debug
+            block << "\n" << debug_tpl.gsub("VALUE"){file}
+          end
+
+          IO.readlines(file).each do |line|
+            block << indent << line.to_s.gsub(/\\'/, "\\\\\\\\'")
+          end
+        # end
+
+        template.gsub(placeholder){block}
       end
 
       def populate_template_with_resources(template, placeholder, resources, debug, debug_tpl, indent_level)
@@ -638,6 +683,7 @@ module Rally
             gsub("APP_TITLE", @config.name).
             gsub("APP_SDK_VERSION", @config.sdk_version).
             gsub("APP_SDK_PATH", debug ? @config.sdk_debug_path : @config.sdk_path).
+            gsub("DEFAULT_APP_HTML_FILE", list_to_quoted_string(@config.html)).
             gsub("DEFAULT_APP_JS_FILE", list_to_quoted_string(@config.javascript)).
             gsub("DEFAULT_APP_CSS_FILE", list_to_quoted_string(@config.css)).
             gsub("CLASS_NAME", @config.class_name)
@@ -662,7 +708,7 @@ module Rally
       SDK_ABSOLUTE_URL = "https://rally1.rallydev.com/apps"
 
       attr_reader :name, :sdk_version, :sdk_file, :sdk_debug_file
-      attr_accessor :javascript, :css, :class_name
+      attr_accessor :html, :javascript, :css, :class_name
       attr_accessor :server, :username, :password, :project, :project_oid, :page_oid, :panel_oid
 
       def self.from_config_file(config_file, deploy_file)
@@ -673,6 +719,7 @@ module Rally
         name = Rally::RallyJson.get(config_file, "name")
         sdk_version = Rally::RallyJson.get(config_file, "sdk")
         class_name = Rally::RallyJson.get(config_file, "className")
+        html = Rally::RallyJson.get_array(config_file, "html")
         javascript = Rally::RallyJson.get_array(config_file, "javascript")
         css = Rally::RallyJson.get_array(config_file, "css")
 
@@ -685,6 +732,7 @@ module Rally
         panel_oid = Rally::RallyJson.get(deploy_file, "panelOid.cached")
 
         config = Rally::AppSdk::AppConfig.new(name, sdk_version, config_file, deploy_file)
+        config.html = html
         config.javascript = javascript
         config.css = css
         config.class_name = class_name
@@ -705,8 +753,13 @@ module Rally
         @sdk_debug_file = (@sdk_version.include? "1.") ? "sdk.js?debug=true" : "sdk-debug.js" 
         @config_file = config_file
         @deploy_file = deploy_file
+        @html = []
         @javascript = []
         @css = []
+      end
+
+      def html=(file)
+        @html = (@html << file).flatten
       end
 
       def javascript=(file)
@@ -731,6 +784,10 @@ module Rally
       end
 
       def validate
+        @html.each do |file|
+          raise Exception.new("Could not find HTML template file #{file}") unless File.exist? file
+        end
+
         @javascript.each do |file|
           raise Exception.new("Could not find JavaScript file #{file}") unless File.exist? file
         end
@@ -856,6 +913,32 @@ module Rally
 
   module AppTemplates
     ## Templates
+    HTML_FILE_TPL = <<-END
+    <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<!-- Copyright (c) #{Time.new.strftime("%Y")} Rally Software Development Corp. All rights reserved -->
+<html>
+<head>
+  <title>APP_TITLE</title>
+  <meta name="Name" content="App: APP_READABLE_NAME" />
+  <meta name="Version" content="#{Time.new.strftime("%Y.%m.%d")}" />
+  <meta name="Vendor" content="Rally Software" />
+
+  <script type="text/javascript" src="APP_SDK_PATH"></script>
+
+  <script type="text/javascript">
+    function onLoad() {
+      var appCustom = new APP_NAME();
+      appCustom.display(dojo.body());
+    }
+
+    rally.addOnLoad(onLoad);
+  </script>
+</head>
+
+<body></body>
+</html>
+    END
+
     JAVASCRIPT_TPL = <<-END
 Ext.define('CLASS_NAME', {
     extend: 'Rally.app.App',
@@ -925,31 +1008,7 @@ STYLE_BLOCK
     END
 
     HTML_DEBUG_SDK1_TPL = <<-END
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
-<!-- Copyright (c) #{Time.new.strftime("%Y")} Rally Software Development Corp. All rights reserved -->
-<html>
-<head>
-  <title>APP_TITLE</title>
-  <meta name="Name" content="App: APP_READABLE_NAME" />
-  <meta name="Version" content="#{Time.new.strftime("%Y.%m.%d")}" />
-  <meta name="Vendor" content="Rally Software" />
-
-  <script type="text/javascript" src="APP_SDK_PATH"></script>
-    JAVASCRIPT_DEBUG_BLOCK
-    STYLE_BLOCK
-
-  <script type="text/javascript">
-    function onLoad() {
-      var appCustom = new APP_NAME();
-      appCustom.display(dojo.body());
-    }
-
-    rally.addOnLoad(onLoad);
-  </script>
-
-</head>
-<body></body>
-</html>
+    HTML_SDK1_BLOCK
     END
 
     HTML_TPL = <<-END
@@ -973,24 +1032,7 @@ STYLE_BLOCK    </style>
     END
 
     HTML_SDK1_TPL = <<-END
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
-<!-- Copyright (c) #{Time.new.strftime("%Y")} Rally Software Development Corp. All rights reserved -->
-<html>
-<head>
-    <title>APP_TITLE</title>
-    <script type="text/javascript" src="APP_SDK_PATH"></script>
-    <meta name="Name" content="App: APP_READABLE_NAME" />
-    <meta name="Version" content="#{Time.new.strftime("%Y.%m.%d")}" />
-    <meta name="Vendor" content="Rally Software" />
-
-#{JAVASCRIPT_INLINE_BLOCK_SDK1_TPL}
-
-    <style type="text/css">
-STYLE_BLOCK
-    </style>
-</head>
-<body></body>
-</html>
+      HTML_SDK1_BLOCK
     END
 
     CONFIG_TPL = <<-END
@@ -998,6 +1040,9 @@ STYLE_BLOCK
     "name": "APP_READABLE_NAME",
     "className": "CustomApp",
     "sdk": "APP_SDK_VERSION",
+    "html": [
+        DEFAULT_APP_HTML_FILE
+    ],
     "javascript": [
         DEFAULT_APP_JS_FILE
     ],
