@@ -550,20 +550,21 @@ module Rally
         end
 
         # HTML templates are different betweeen SDK 1 and SDK 2 apps
+        html_tpl = ""
+
         if @config.sdk_version.include? "1."
           template = debug ? Rally::AppTemplates::HTML_DEBUG_SDK1_TPL : Rally::AppTemplates::HTML_SDK1_TPL
           html_tpl = add_placeholders_to_html_template_file(template, HTML_TEMPLATE_FILE, debug)
-          write_file(".html.template", html_tpl)
         else
           template = debug ? Rally::AppTemplates::HTML_DEBUG_TPL : Rally::AppTemplates::HTML_TPL
         end
 
         template = populate_html_template_with_resources(template,
-                                                    "HTML_SDK1_BLOCK",
-                                                    ".html.template",
-                                                    debug,
-                                                    "\"VALUE\"",
-                                                    0)
+                                                        "HTML_SDK1_BLOCK",
+                                                        html_tpl,
+                                                        debug,
+                                                        "\"VALUE\"",
+                                                        0)
 
         template = populate_template_with_resources(template,
                                                     "JAVASCRIPT_BLOCK",
@@ -601,7 +602,10 @@ module Rally
       end
 
       def get_template_files
-        [CONFIG_FILE, DEPLOY_FILE, HTML_TEMPLATE_FILE, JAVASCRIPT_FILE, CSS_FILE, HTML_DEBUG, HTML_LOCAL]
+        list = [CONFIG_FILE, DEPLOY_FILE, JAVASCRIPT_FILE, CSS_FILE, HTML_DEBUG, HTML_LOCAL]
+        list.push(HTML_TEMPLATE_FILE) if @config.sdk_version.include? "1."
+
+        list
       end
 
       def create_file_from_template(file, template, opts = {})
@@ -619,7 +623,15 @@ module Rally
 
         File.open(resource, "r") do |file|
           file.each_line do |line|
+            # This will replace the placeholder App SDK include in the template file
+            if line.include? "src=\"/apps/"
+              sdk_src_path = debug ? @config.sdk_debug_path : @config.sdk_path
+              line = "<script type =\"text/javascript\" src=\"#{sdk_src_path}\"></script>" + "\n"
+            end
+
             tpl_file = tpl_file + line
+
+            # This will add in all other scripts from the config file immediately after the SDK include
             if line.include? "sdk.js"
               tpl_file += "  " + "JAVASCRIPT_DEBUG_BLOCK" + "\n" + "  " + "STYLE_BLOCK" + "\n" if debug
               tpl_file += "  " + "<script type =\"text/javascript\">" + "\n" + "    " + "JAVASCRIPT_BLOCK" + "\n" + "  " + "</script>" + "\n\n" + "  " + "<style type=\"text/css\">" + "\n" + "    " + "STYLE_BLOCK" + "\n" + "  " + "</style>" + "\n" unless debug
@@ -629,19 +641,19 @@ module Rally
         tpl_file
       end
 
-      def populate_html_template_with_resources(template, placeholder, file, debug, debug_tpl, indent_level)
+      def populate_html_template_with_resources(template, placeholder, string_tpl, debug, debug_tpl, indent_level)
         block = ""
         indent = "    " * indent_level
 
-        # resources.each do |file|
-          if debug
-            block << "\n" << debug_tpl.gsub("VALUE"){file}
-          end
+        if debug
+           block << "\n" << debug_tpl.gsub("VALUE"){string_tpl} << "\n"
+        else
+          lines = string_tpl.split("\n")
 
-          IO.readlines(file).each do |line|
-            block << indent << line.to_s.gsub(/\\'/, "\\\\\\\\'")
+          lines.each do |line|
+            block << indent << line.to_s.gsub(/\\'/, "\\\\\\\\'") << "\n"
           end
-        # end
+        end
 
         template.gsub(placeholder){block}
       end
@@ -900,7 +912,7 @@ module Rally
   module AppTemplates
     ## Templates
     HTML_FILE_TPL = <<-END
-    <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <!-- Copyright (c) #{Time.new.strftime("%Y")} Rally Software Development Corp. All rights reserved -->
 <html>
 <head>
