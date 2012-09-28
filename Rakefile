@@ -502,7 +502,6 @@ module Rally
       DEPLOY_FILE = "deploy.json"
       GITIGNORE_FILE = ".gitignore"
       DEPLOY_DIR = 'deploy'
-      HTML_TEMPLATE_FILE = "App.template.html"
       JAVASCRIPT_FILE = "App.js"
       CSS_FILE = "app.css"
       HTML = "#{DEPLOY_DIR}/App.html"
@@ -510,12 +509,15 @@ module Rally
       HTML_LOCAL = "App-local.html"
       CLASS_NAME = "CustomApp"
 
+      attr_reader :html_template_file
+
       def self.get_auto_generated_files
         [HTML, HTML_DEBUG]
       end
 
       def initialize(config)
         @config = config
+        @html_template_file = @config.name + ".template.html"
       end
 
       def build
@@ -532,8 +534,8 @@ module Rally
         # The Javascript and CSS structure are different between SDK 1 and SDK 2
         if @config.sdk_version.include? "1."
           create_file_from_template JAVASCRIPT_FILE, Rally::AppTemplates::JAVASCRIPT_SDK1_TPL, {:escape => true}
-          create_file_from_template CSS_FILE, Rally::AppTemplates::CSS_SDK1_TPL
-          create_file_from_template HTML_TEMPLATE_FILE, Rally::AppTemplates::HTML_FILE_TPL
+          create_file_from_template CSS_FILE, Rally::AppTemplates::CSS_SDK1_TPL 
+          create_file_from_template @html_template_file, Rally::AppTemplates::HTML_FILE_TPL unless File.exists? html_template_file
         else
           create_file_from_template JAVASCRIPT_FILE, Rally::AppTemplates::JAVASCRIPT_TPL, {:escape => true}
           create_file_from_template CSS_FILE, Rally::AppTemplates::CSS_TPL
@@ -554,7 +556,7 @@ module Rally
 
         if @config.sdk_version.include? "1."
           template = debug ? Rally::AppTemplates::HTML_DEBUG_SDK1_TPL : Rally::AppTemplates::HTML_SDK1_TPL
-          html_tpl = add_placeholders_to_html_template_file(template, HTML_TEMPLATE_FILE, debug)
+          html_tpl = add_placeholders_to_html_template_file(template, @html_template_file, debug)
         else
           template = debug ? Rally::AppTemplates::HTML_DEBUG_TPL : Rally::AppTemplates::HTML_TPL
         end
@@ -601,11 +603,9 @@ module Rally
         mkdir DEPLOY_DIR unless File.exists?(DEPLOY_DIR)
       end
 
+      # These template files cannot exist when creating a new project. *.template.html is an exception and not in this list
       def get_template_files
-        list = [CONFIG_FILE, DEPLOY_FILE, JAVASCRIPT_FILE, CSS_FILE, HTML_DEBUG, HTML_LOCAL]
-        list.push(HTML_TEMPLATE_FILE) if @config.sdk_version.include? "1."
-
-        list
+        [CONFIG_FILE, DEPLOY_FILE, JAVASCRIPT_FILE, CSS_FILE, HTML_DEBUG, HTML_LOCAL]
       end
 
       def create_file_from_template(file, template, opts = {})
@@ -1006,7 +1006,7 @@ STYLE_BLOCK
     END
 
     HTML_DEBUG_SDK1_TPL = <<-END
-    HTML_SDK1_BLOCK
+HTML_SDK1_BLOCK
     END
 
     HTML_TPL = <<-END
@@ -1030,7 +1030,7 @@ STYLE_BLOCK    </style>
     END
 
     HTML_SDK1_TPL = <<-END
-      HTML_SDK1_BLOCK
+HTML_SDK1_BLOCK
     END
 
     CONFIG_TPL = <<-END
