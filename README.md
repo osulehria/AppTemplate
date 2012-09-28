@@ -21,9 +21,11 @@ Available tasks are:
 
 ## Differences between creating SDK 1 apps vs SDK 2+ apps
 
-The development process for each SDK is different (SDK 1 uses Dojo and SDK 2 uses ExtJS) but there shouldn't be any problems with using the Rakefile to create, build, and debug apps.
+The development process for each SDK is different (SDK 1 uses Dojo and SDK 2 uses ExtJS) but there shouldn't be any problems with using the Rakefile to create, build, and debug apps. The typical way of building and creating apps in either version of the SDK should be similar (SDK 1 using *.template.html and SDK 2 using ExtJS libraries).
 
-There only thing that isn't currently working is the rake:deploy options for SDK1 apps.
+What's somewhat different with creating SDK 1 apps is how the script files are included in the *.template.html file. Previously, you manually needed to add the Javascript and CSS files includes into the HTML template file. With this Rakefile, this is no longer the case. When the rake task is executed, all of the Javascript and CSS files will be automatically included right after the SDK include line (this is the case for both debug and deploy files).
+
+The rake:deploy option is untested with SDK1 apps but the way it is designed doesn't depend on the SDK used.
 
 ## License
 
