@@ -563,7 +563,7 @@ module Rally
                                                         "HTML_SDK1_BLOCK",
                                                         html_tpl,
                                                         debug,
-                                                        "\"VALUE\"",
+                                                        "VALUE",
                                                         0)
 
         template = populate_template_with_resources(template,
