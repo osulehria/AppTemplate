@@ -937,6 +937,8 @@ STYLE_BLOCK    </style>
 #{Rally::AppSdk::AppTemplateBuilder::HTML_DEBUG}
 # Ignore 'local' build version of App
 #{Rally::AppSdk::AppTemplateBuilder::HTML_LOCAL}
+#Ignore All hidden files.
+.*
     END
   end
 end
