@@ -179,8 +179,10 @@ module Rally
       end
 
       def deploy
-        puts "Deploying to Rally..."
 
+        raise "Unable to deploy.  Missing values in deploy.json config file. Aborting..." if !@config.deployable?
+
+        puts "Deploying to Rally..."
         login  # obtains session info
         resolve_project  # determine if using oid or name from config
 
@@ -658,13 +660,20 @@ module Rally
         javascript = Rally::RallyJson.get_array(config_file, "javascript")
         css = Rally::RallyJson.get_array(config_file, "css")
 
-        deploy_server = Rally::RallyJson.get(deploy_file, "server")
-        username = Rally::RallyJson.get(deploy_file, "username")
-        password = Rally::RallyJson.get(deploy_file, "password")
-        project_oid = Rally::RallyJson.get(deploy_file, "projectOid")
-        project = Rally::RallyJson.get(deploy_file, "project")
-        page_oid = Rally::RallyJson.get(deploy_file, "pageOid.cached")
-        panel_oid = Rally::RallyJson.get(deploy_file, "panelOid.cached")
+        if File.exist? deploy_file
+          deploy_server = Rally::RallyJson.get(deploy_file, "server")
+          username = Rally::RallyJson.get(deploy_file, "username")
+          password = Rally::RallyJson.get(deploy_file, "password")
+          project_oid = Rally::RallyJson.get(deploy_file, "projectOid")
+          project = Rally::RallyJson.get(deploy_file, "project")
+          page_oid = Rally::RallyJson.get(deploy_file, "pageOid.cached")
+          panel_oid = Rally::RallyJson.get(deploy_file, "panelOid.cached")
+
+          raise "Error: Deploy server not found in deploy.json" if deploy_server.nil?
+          raise "Error: Username not found in deploy.json" if username.nil?
+          raise "Error: Password not found in deploy.json" if password.nil?
+          raise "Error: Project name or OID not found in deploy.json" if project_oid.nil? && project.nil?
+        end
 
         config = Rally::AppSdk::AppConfig.new(name, sdk_version, server, config_file, deploy_file)
         config.javascript = javascript
@@ -734,6 +743,13 @@ module Rally
           raise Exception.new(msg)
         end
 
+      end
+
+      def deployable?
+        (File.exist? @deploy_file) \
+          && !@deploy_server.nil? && !@deploy_server.empty? \
+          && !@username.nil? && !@username.empty? \
+          && !@password.nil? && !@password.empty?
       end
 
       def sdk_debug_path
