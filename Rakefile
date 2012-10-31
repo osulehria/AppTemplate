@@ -567,15 +567,17 @@ module Rally
                                                         "HTML_SDK1_BLOCK",
                                                         html_tpl,
                                                         debug,
-                                                        "VALUE",
-                                                        0)
+                                                        "VALUE")
+
+        # Indents are a bit different between SDK 1 and 2 files with Javascript blocks
+        js_indent = (@config.sdk_version.include? "1.") ? 1 : 3
 
         template = populate_template_with_resources(template,
                                                     "JAVASCRIPT_BLOCK",
                                                     @config.javascript,
                                                     debug,
                                                     "\"VALUE\"",
-                                                    3)
+                                                    js_indent)
 
         template = populate_template_with_resources(template,
                                                     "STYLE_BLOCK",
@@ -628,7 +630,7 @@ module Rally
             # This will replace the placeholder App SDK include in the template file
             if line.include? "src=\"/apps/"
               sdk_src_path = debug ? @config.sdk_debug_path : @config.sdk_path
-              line = "<script type =\"text/javascript\" src=\"#{sdk_src_path}\"></script>" + "\n"
+              line = "  " + "<script type =\"text/javascript\" src=\"#{sdk_src_path}\"></script>" + "\n"
             end
 
             tpl_file = tpl_file + line
@@ -636,24 +638,23 @@ module Rally
             # This will add in all other scripts from the config file immediately after the SDK include
             if line.include? "sdk.js"
               tpl_file += "  " + "JAVASCRIPT_DEBUG_BLOCK" + "\n" + "  " + "STYLE_BLOCK" + "\n" if debug
-              tpl_file += "  " + "<script type =\"text/javascript\">" + "\n" + "    " + "JAVASCRIPT_BLOCK" + "\n" + "  " + "</script>" + "\n\n" + "  " + "<style type=\"text/css\">" + "\n" + "    " + "STYLE_BLOCK" + "\n" + "  " + "</style>" + "\n" unless debug
+              tpl_file += "  " + "<script type =\"text/javascript\">" + "\n" + "JAVASCRIPT_BLOCK" + "\n" + "  " + "</script>" + "\n\n" + "  " + "<style type=\"text/css\">" + "\n" + "    " + "STYLE_BLOCK" + "\n" + "  " + "</style>" + "\n" unless debug
             end
           end
         end
         tpl_file
       end
 
-      def populate_html_template_with_resources(template, placeholder, string_tpl, debug, debug_tpl, indent_level)
+      def populate_html_template_with_resources(template, placeholder, string_tpl, debug, debug_tpl)
         block = ""
-        indent = "    " * indent_level
 
         if debug
-           block << "\n" << debug_tpl.gsub("VALUE"){string_tpl} << "\n"
+           block << "" << debug_tpl.gsub("VALUE"){string_tpl} << ""
         else
           lines = string_tpl.split("\n")
 
           lines.each do |line|
-            block << indent << line.to_s.gsub(/\\'/, "\\\\\\\\'") << "\n"
+            block << line.to_s.gsub(/\\'/, "\\\\\\\\'") << "\n"
           end
         end
 
