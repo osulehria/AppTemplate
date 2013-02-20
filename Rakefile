@@ -627,8 +627,7 @@ module Rally
           file.each_line do |line|
             # This will replace the placeholder App SDK include in the template file
             if line.include? "src=\"/apps/"
-              sdk_src_path = debug ? @config.sdk_debug_path : @config.sdk_path
-              line = "  " + "<script type =\"text/javascript\" src=\"#{sdk_src_path}\"></script>" + "\n"
+              line = build_src_path(line, debug)
             end
 
             tpl_file = tpl_file + line
@@ -710,6 +709,13 @@ module Rally
 
       def is_javascript_file(file)
         file.split('.').last.eql? "js"
+      end
+
+      def build_src_path(relative_path, debug)
+        sdk_src_path = debug ? @config.sdk_debug_path : @config.sdk_path
+        sdk_src_path = sdk_src_path + relative_path.slice(relative_path.index("?"), relative_path.length)
+        
+        "  " + "<script type =\"text/javascript\" src=\"#{sdk_src_path}\"></script>" + "\n"
       end
     end
 
