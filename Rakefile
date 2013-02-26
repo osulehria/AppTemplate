@@ -713,8 +713,8 @@ module Rally
 
       def build_src_path(relative_path, debug)
         sdk_src_path = debug ? @config.sdk_debug_path : @config.sdk_path
-        sdk_src_path = sdk_src_path + relative_path.slice(relative_path.index("?"), relative_path.length)
-        
+        sdk_src_path += relative_path.slice(relative_path.index("?"), relative_path.length) if relative_path.include? "?"
+
         "  " + "<script type =\"text/javascript\" src=\"#{sdk_src_path}\"></script>" + "\n"
       end
     end
