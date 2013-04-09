@@ -24,9 +24,13 @@ You can find more information on installing Ruby and using rake tasks to simplif
 
 The development process for each SDK is different (SDK 1 uses Dojo and SDK 2 uses ExtJS) but there shouldn't be any problems with using the Rakefile to create, build, and debug apps. The typical way of building and creating apps in either version of the SDK should be similar (SDK 1 using *.template.html and SDK 2 using ExtJS libraries).
 
-What's somewhat different with creating SDK 1 apps is how the script files are included in the *.template.html file. Previously, you manually needed to add the Javascript and CSS files includes into the HTML template file. With this Rakefile, this is no longer the case. When the rake task is executed, all of the Javascript and CSS files will be automatically included right after the SDK include line (this is the case for both debug and deploy files).
+What's somewhat different with creating SDK 1 apps is how the script files are included in the *.template.html file. Previously, you manually needed to add the Javascript and CSS files includes into the HTML template file. With this Rakefile, this is no longer the case. When the rake task is executed, all of the Javascript and CSS files will be automatically included right after the SDK include line (this is the case for both debug and deploy files). 
 
-The rake:deploy option is untested with SDK1 apps but the way it is designed doesn't depend on the SDK used.
+In the SDK 1 template file, you can also add query options to the sdk.js source file. Here's an example that specifies which Web Services API you want to use with the SDK:
+
+    <script type="text/javascript" src="/apps/1.32/sdk.js?apiVersion=1.38"></script>
+
+The rake:deploy option is untested with SDK1 apps. The way the deploy option is implemented, it should not matter what SDK version is used.
 
 ## License
 
